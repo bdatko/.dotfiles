@@ -1,0 +1,8 @@
+live_config_reload = true
+
+[window]
+opacity = 0.85
+
+[font]
+normal = { family = "IBM Plex Mono", style = "Regular" }
+size = 14.0
