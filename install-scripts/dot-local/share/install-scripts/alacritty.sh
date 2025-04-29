@@ -1,3 +1,3 @@
 #!/usr/bin/env bash
 
-brew install --cask alacritty
+brew install --no-quarantine --cask alacritty
