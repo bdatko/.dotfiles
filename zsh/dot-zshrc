@@ -24,5 +24,3 @@ setopt correctall
 
 source $(brew --prefix)/Cellar/fzf/$(fzf --version | cut -d ' ' -f 1)/shell/key-bindings.zsh
 
-# source script from uv which will update your PATH to use uv
-. "$HOME/.local/bin/env"
