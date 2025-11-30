@@ -13,14 +13,17 @@ setopt HIST_SAVE_NO_DUPS         # Don't write duplicate entries in the history 
 setopt HIST_REDUCE_BLANKS        # Remove superfluous blanks before recording entry.
 setopt HIST_VERIFY               # Don't execute immediately upon history expansion.
 
+. "$HOME/.local/bin/env"
+
 eval "$(starship init zsh)"
 
 # Completion
 autoload -U compinit
 compinit
 
-# Correction
-setopt correctall
+# set external managed uv of hatch
+# see https://hatch.pypa.io/1.10/how-to/environment/select-installer/#externally-managed
+export HATCH_ENV_TYPE_VIRTUAL_UV_PATH="$HOME/.local/bin/uv"
 
 source $(brew --prefix)/Cellar/fzf/$(fzf --version | cut -d ' ' -f 1)/shell/key-bindings.zsh
 
