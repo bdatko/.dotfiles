@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-selected=$( (echo "HOME"; echo "Downloads"; find ~/work ~/personal -maxdepth 1 -mindepth 1 -type d) | fzf)
+selected=$( (echo "Home"; echo "Downloads"; find ~/work ~/personal -maxdepth 1 -mindepth 1 -type d) | fzf)
 if [[ -z "$selected" ]]; then
     exit 0
 fi
