@@ -68,11 +68,8 @@ def cli(url: str, dir: Path | None = None, dry_run: bool = False):
         directory = dir
 
     clone = git["clone", url, directory]
-    hash_obj = git["hash-object", "-t", "tree", "/dev/null"]().strip()
-    commit_obj = (git["commit-tree", hash_obj] << "/dev/null")
-    checkout = git["checkout", commit_obj]
 
-# git checkout $(git commit-tree $(git hash-object -t tree /dev/null) < /dev/null)
+    # git checkout $(git commit-tree $(git hash-object -t tree /dev/null) < /dev/null)
 
     if dry_run:
         click.echo(clone)
