@@ -1,0 +1,95 @@
+#!/usr/bin/env -S uv run --script
+#
+# /// script
+# requires-python = ">=3.12"
+# dependencies = [
+#   "click",
+#   "plumbum",
+#   "validators",
+# ]
+# ///
+
+import os
+from pathlib import Path
+from typing import Any, override
+
+import click
+import validators
+from plumbum.cmd import cd, git
+from validators.utils import ValidationError
+
+
+class URLParamType(click.ParamType):
+    name = "url"
+
+    @override
+    def convert(self, value: Any, param: click.ParamType, ctx: click.Context) -> str:
+        if not isinstance(value, str):
+            msg = f"{value!r} is not a valid url"
+            self.fail(msg, param, ctx)
+
+        try:
+            if validators.url(value, r_ve=True):
+                return value
+        except ValidationError:
+            msg = f"{value!r} is not a valid url"
+            self.fail(msg, param, ctx)
+
+
+URL = URLParamType()
+
+
+@click.command()
+@click.argument("url", type=URL, required=True)
+@click.option(
+    "--dir",
+    type=click.Path(exists=False, file_okay=False, dir_okay=True, path_type=Path),
+    required=False,
+    default=None,
+    help="""
+    The name of a new directory to clone into. The "humanish" part of the source
+    repository is used if no <directory> is explicitly given (repo for /path/to/repo.git).
+    """,
+)
+@click.option(
+    "--dry-run",
+    type=click.BOOL,
+    is_flag=True,
+    default=False,
+    help="""
+        Only show the commands the scripts will run without execution.
+        """,
+)
+def cli(url: str, dir: Path | None = None, dry_run: bool = False):
+    """git clone URL then checkout an empty working tree"""
+    if dir is None:
+        directory = Path(url).stem
+    else:
+        directory = dir
+
+    clone = git["clone", url, directory]
+    hash_obj = git["hash-object", "-t", "tree", "/dev/null"]().strip()
+    commit_obj = (git["commit-tree", hash_obj] << "/dev/null")
+    checkout = git["checkout", commit_obj]
+
+# git checkout $(git commit-tree $(git hash-object -t tree /dev/null) < /dev/null)
+
+    if dry_run:
+        click.echo(clone)
+        click.echo(f"cd {directory}")
+        msg = f"$({git} hash-object -t tree /dev/null)"
+        msg = f"$({git} commit-tree {msg}"
+        msg = f"{git} checkout {msg} < /dev/null)"
+        click.echo(msg)
+        raise click.Abort()
+
+    clone()
+    os.chdir(directory)
+    hash_obj = git["hash-object", "-t", "tree", "/dev/null"]().strip()
+    commit_obj = (git["commit-tree", hash_obj] << "/dev/null")().strip()
+    checkout = git["checkout", commit_obj]
+    checkout()
+
+
+if __name__ == "__main__":
+    cli()
