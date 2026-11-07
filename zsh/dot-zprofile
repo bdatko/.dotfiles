@@ -1,0 +1,29 @@
+[[ -n $ZSH_VERSION ]] || return
+
+typeset -U path
+
+# Set XDG Base Directory variables
+export XDG_CONFIG_HOME="$HOME/.config"
+export XDG_CACHE_HOME="$HOME/.cache"
+export XDG_DATA_HOME="$HOME/.local/share"
+
+eval "$(/opt/homebrew/bin/brew shellenv)"
+
+bindkey -s ^f "tmux-sessionizer\n"
+
+[[ -f ~/.zprofile.local ]] && source ~/.zprofile.local
+
+addToPath() {
+	local new_dir="$1"
+	[[ -d $new_dir ]] || return
+	path+=("$new_dir")
+}
+
+addToPathFront() {
+	local new_dir="$1"
+	[[ -d $new_dir ]] || return
+	path=("$new_dir" "${path[@]}")
+}
+
+addToPath "/Applications/Visual Studio Code.app/Contents/Resources/app/bin"
+addToPath "$HOME/.local/scripts"
