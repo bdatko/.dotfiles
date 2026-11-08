@@ -8,6 +8,29 @@ function logging(msg) {
     }
 }
 
+# Report whether outputFile may be (re)written. A generated script has at most
+# one command line; anything with comments, conditionals, or extra commands is
+# hand-maintained and must not be clobbered.
+function is_generated(path, expected,    line, commands, only) {
+    commands = 0
+    only = ""
+    while ((getline line < path) > 0) {
+        if (line == "" || line ~ /^#!/ || line ~ /^set -euo pipefail$/)
+            continue
+        if (line ~ /^#/) {
+            close(path)
+            return 0
+        }
+        commands++
+        only = line
+    }
+    close(path)
+
+    if (commands == 0)
+        return 1
+    return commands == 1 && only == expected
+}
+
 BEGIN {
     tmpfile = "/tmp/temp.brew_install"
     cmd_count = 0
@@ -53,11 +76,16 @@ END {
             n = split(sorted_cmd, fields)
             outputFile = fields[n] ".sh"
 
+            if (!is_generated(outputFile, sorted_cmd)) {
+                logging("skip hand-maintained: " outputFile)
+                continue
+            }
+
             logging("writing install-script: " outputFile)
 
             # Write command to its own shell script
             if (!dry_run) {
-                print "#!/usr/bin/env bash\n\n" sorted_cmd > outputFile
+                print "#!/usr/bin/env bash\n\nset -euo pipefail\n\n" sorted_cmd > outputFile
                 close(outputFile)
             }
 

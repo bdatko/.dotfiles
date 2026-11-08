@@ -269,6 +269,27 @@ a keg-local formula. `--strict` turns that warning into a failure. A script
 that intentionally installs such a package out-of-band can opt out with
 `# check-brew: allow-unavailable`.
 
+## Pinned packages
+
+Some packages track the version this config is tested against. They are pinned
+with `brew pin`, which stops `brew upgrade` — even when the formula is named
+explicitly. `neovim.sh` installs only when the formula is missing and
+re-asserts the pin, because `brew install` would otherwise upgrade an outdated
+formula despite the pin.
+
+| Package | Version |
+| --- | --- |
+| `neovim` | 0.12.6 |
+
+Update deliberately:
+
+```bash
+brew unpin neovim
+brew upgrade neovim
+# bump `expected` in neovim.sh, then:
+brew pin neovim
+```
+
 ## Adding a package
 
 1. Create a top-level directory and name files `dot-…` for dotfiles, e.g.
@@ -276,7 +297,11 @@ that intentionally installs such a package out-of-band can opt out with
 2. Add `mytool` to `stow-packages`.
 3. `./stow-all.py -n -v`, then `./stow-all.py`.
 4. For system packages, add `install-scripts/dot-local/share/install-scripts/mytool.sh`
-   (`brew install …`, executable) and run `./check-brew.py`.
+   with the standard header (`#!/usr/bin/env bash`, blank line,
+   `set -euo pipefail`, blank line), make it executable, and run
+   `./check-brew.py`. `scripts/dot-local/scripts/brew_install.awk` can seed
+   simple scripts from shell history; it refuses to overwrite hand-maintained
+   ones.
 
 ## Updating
 
