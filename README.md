@@ -143,9 +143,6 @@ Residual assumptions:
   disabled for `fails_gatekeeper_check`, and `curl` downloads are not
   quarantined. The digest proves it is the exact GitHub artifact, not that
   Apple trusts it.
-- `curl` follows only HTTPS (`--proto`/`--proto-redir`) and uses Homebrew's CA
-  bundle when it exists, avoiding the system trust store until the compromised
-  roots are removed.
 
 ## Machine-local files
 
