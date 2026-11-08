@@ -1,3 +1,4 @@
 #!/usr/bin/env bash
 
-brew install tldr
+# tldr-c-client was removed from homebrew-core; tealdeer provides `tldr`.
+brew install tealdeer

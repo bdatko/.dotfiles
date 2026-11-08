@@ -29,5 +29,5 @@ compinit
 # see https://hatch.pypa.io/1.10/how-to/environment/select-installer/#externally-managed
 export HATCH_ENV_TYPE_VIRTUAL_UV_PATH="$HOME/.local/bin/uv"
 
-source $(brew --prefix)/Cellar/fzf/$(fzf --version | cut -d ' ' -f 1)/shell/key-bindings.zsh
+source "$(brew --prefix fzf)/shell/key-bindings.zsh"
 

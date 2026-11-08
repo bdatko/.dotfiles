@@ -2,7 +2,21 @@
 
 set -euo pipefail
 
-/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+# Download Homebrew's installer to a file first; never execute a pipe.
+tmpdir=$(mktemp -d)
+trap 'rm -rf "$tmpdir"' EXIT
+
+curl_opts=(--proto '=https' --proto-redir '=https' --tlsv1.2 -fsSL)
+# Prefer Homebrew's CA bundle once it exists; the system store is all we have
+# on a truly fresh machine.
+if [[ -f /opt/homebrew/etc/ca-certificates/cert.pem ]]; then
+	curl_opts+=(--cacert /opt/homebrew/etc/ca-certificates/cert.pem)
+fi
+
+curl "${curl_opts[@]}" \
+	https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh \
+	-o "$tmpdir/install.sh"
+/bin/bash "$tmpdir/install.sh"
 
 # Keep machine-specific shell setup out of the tracked ~/.zprofile.
 profile_local="$HOME/.zprofile.local"
@@ -19,3 +33,9 @@ fi
 eval "$(/opt/homebrew/bin/brew shellenv)"
 brew update
 brew install stow
+
+cat <<'EOF'
+
+Homebrew is ready. Open a new shell, or run:
+  eval "$(/opt/homebrew/bin/brew shellenv)"
+EOF

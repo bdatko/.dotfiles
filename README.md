@@ -31,26 +31,51 @@ has called them "packages" since 2.0; "modules" is the old term.)
 
 ## New machine
 
-### 1. Homebrew and Stow
+### 1. Clone the repo
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/bdatko/.dotfiles/refs/heads/main/install > install
-chmod +x install
+git clone --recurse-submodules https://github.com/bdatko/.dotfiles.git ~/.dotfiles
+cd ~/.dotfiles
+
+# Read the bootstrap before running it.
+less install
+```
+
+HTTPS works without SSH keys on a fresh machine. Switch the remote to SSH later
+if you want to push:
+
+```bash
+git remote set-url origin git@github.com:bdatko/.dotfiles.git
+```
+
+### 2. Homebrew and Stow
+
+```bash
+cd ~/.dotfiles
 ./install
 ```
 
-`install` installs Homebrew, appends `brew shellenv` to `~/.zprofile.local`
-(idempotently), and installs `stow`.
+`install` downloads Homebrew's upstream installer to a temporary file and runs
+it from disk, appends `brew shellenv` to `~/.zprofile.local` (idempotently),
+and installs `stow`.
 
-### 2. uv
+### 3. uv
 
 `uv` is a bootstrap prerequisite: both `./stow-all.py` and `babo` run on it.
 
+First put Homebrew on `PATH` in this shell — open a new terminal, or:
+
 ```bash
-curl -LsSf https://astral.sh/uv/install.sh | sh
+eval "$(/opt/homebrew/bin/brew shellenv)"
 ```
 
-### 3. babo
+Then install uv from Homebrew rather than piping a remote script into a shell:
+
+```bash
+brew install uv
+```
+
+### 4. babo
 
 ```bash
 uv tool install git+https://github.com/bdatko/babo.git
@@ -60,11 +85,9 @@ uv tool update-shell
 Run `uv tool update-shell` **before** stowing `zsh`. It edits shell rc files,
 and `~/.zshrc` is a Stow symlink, so running it later dirties this repo.
 
-### 4. Clone and stow
+### 5. Stow
 
 ```bash
-git clone --recurse-submodules git@github.com:bdatko/.dotfiles.git ~/.dotfiles
-
 # Stow refuses to overwrite a real ~/.zprofile.
 [ -e ~/.zprofile ] && [ ! -L ~/.zprofile ] && mv ~/.zprofile ~/.zprofile.bak
 
@@ -77,7 +100,7 @@ cd ~/.dotfiles
 `stow-packages`; extra flags are forwarded to Stow (`--dry-run` is sugar for
 `-n`).
 
-### 5. Packages
+### 6. Packages
 
 Install scripts are executed with babo:
 
@@ -93,13 +116,36 @@ Babo runs every executable file in the target directory and skips the rest, so
 adding a script is all that is needed. It also honours
 `BABO_TARGET_DIR`.
 
-### 6. Verify
+### 7. Verify
 
 ```bash
 cd ~/.dotfiles
 ./check-brew.py
 uv run tests/tmux.py
 ```
+
+## Download trust model
+
+Nothing is executed from a pipe. The dotfiles arrive via `git clone`, `uv`
+comes from Homebrew, and `install` downloads Homebrew's upstream installer to a
+temporary file before running it. The only other download is the Alacritty
+fallback, which pins a version and verifies the release's SHA256 before
+mounting it.
+
+Residual assumptions:
+
+- The Homebrew installer is fetched from upstream `HEAD` and is not checksummed
+  here. Pinning it would be misleading, because the installer clones
+  `Homebrew/brew` at `HEAD` anyway.
+- Commits in this repo are not signed, so a clone can be inspected but not
+  cryptographically attributed.
+- The Alacritty fallback intentionally bypasses Gatekeeper: the cask is
+  disabled for `fails_gatekeeper_check`, and `curl` downloads are not
+  quarantined. The digest proves it is the exact GitHub artifact, not that
+  Apple trusts it.
+- `curl` follows only HTTPS (`--proto`/`--proto-redir`) and uses Homebrew's CA
+  bundle when it exists, avoiding the system trust store until the compromised
+  roots are removed.
 
 ## Machine-local files
 
@@ -174,6 +220,22 @@ Update the pinned submodule:
 git -C ~/.dotfiles submodule update --remote nvim/dot-config/nvim
 ```
 
+## Alacritty
+
+The `alacritty` homebrew-cask is disabled because it does not pass the macOS
+Gatekeeper check, and Homebrew 7 removed `--no-quarantine`. `alacritty.sh`
+prefers the cask when Homebrew can provision it; otherwise it downloads a
+pinned upstream release, verifies the SHA256 published for that asset, checks
+that the bundle identifier is `org.alacritty`, and copies `Alacritty.app` into
+`/Applications` (no elevation needed). Because the download uses `curl`, the
+app is not quarantined — this intentionally bypasses Gatekeeper, the same net
+effect as the old `--no-quarantine` flag. The script carries
+`# check-brew: allow-unavailable` so `check-brew.py` does not flag the
+intentionally disabled cask.
+
+To bump the fallback, update `ALACRITTY_VERSION` and `ALACRITTY_SHA256` in
+`alacritty.sh`. The digest is the asset's `sha256` from GitHub's release API.
+
 ## tmux
 
 Config lives in `tmux/dot-config/tmux/tmux.conf` and is stowed as
@@ -197,13 +259,18 @@ nonzero on failure.
 ./stow-all.py -n -v   # no stow conflicts
 ./check-brew.py       # declared packages are installed
 ./check-brew.py -v    # also list what each file declares
-./check-brew.py --strict  # fail on installed-but-undeclared packages
+./check-brew.py --strict  # also fail on undeclared or unprovisionable packages
 uv run tests/tmux.py  # tmux config
 ```
 
 `check-brew.py` compares `brew install` lines in `install-scripts/` and
-`install` against `brew leaves` and `brew list --cask`. Personal packages that
-should not be provisioned are listed in `brew-ignore` (fnmatch globs work).
+`install` against `brew list --formula` and `brew list --cask`. Personal
+packages that should not be provisioned are listed in `brew-ignore` (fnmatch
+globs work). It also warns when a declared package cannot be installed on a
+fresh machine — disabled or deprecated, or removed from every tap and left as
+a keg-local formula. `--strict` turns that warning into a failure. A script
+that intentionally installs such a package out-of-band can opt out with
+`# check-brew: allow-unavailable`.
 
 ## Adding a package
 

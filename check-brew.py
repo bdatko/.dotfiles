@@ -13,9 +13,15 @@ Declarations come from:
 Outputs one ``== <check> == PASS|FAIL|WARN`` line per check, matching the
 other harnesses in this repo.
 
+The availability check warns about declared packages that a fresh machine
+could not install: disabled or deprecated packages, and formulae removed from
+every tap that survive only as a keg-local copy. A declaring script can opt
+out with the comment ``# check-brew: allow-unavailable``.
+
 Exit status:
   0  every declared package is installed
-  1  a declared package is missing, or --strict found an undeclared one
+  1  a declared package is missing, or --strict found an undeclared or
+     unavailable one
   2  brew could not be queried
 
 Packages installed for personal reasons can be listed in ``brew-ignore``
@@ -35,6 +41,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent
 IGNORE_FILE = ROOT / "brew-ignore"
 INSTALL_RE = re.compile(r"brew\s+install\s+([^&|;\n\r]+)")
+AVAILABILITY_MARKER = "check-brew: allow-unavailable"
 
 
 def run(*args: str) -> list[str]:
@@ -64,7 +71,7 @@ def declared() -> dict[str, Path]:
             except ValueError:
                 tokens = args.split()
             for token in tokens:
-                if token.startswith("-"):
+                if token.startswith("-") or ">" in token:
                     continue
                 found.setdefault(token, path)
     return found
@@ -85,12 +92,34 @@ def is_ignored(name: str, patterns: list[str]) -> bool:
     return any(fnmatch.fnmatchcase(name, pattern) for pattern in patterns)
 
 
+def unavailable(name: str) -> str | None:
+    """Why ``name`` cannot be provisioned on a fresh machine, if it cannot."""
+    result = subprocess.run(
+        ("brew", "info", name), capture_output=True, text=True, check=False
+    )
+    if result.returncode != 0:
+        return "not found in any tap"
+
+    for line in result.stdout.splitlines():
+        stripped = line.strip()
+        if stripped.startswith(("Disabled because", "Deprecated because")):
+            return stripped
+
+    leaf = name.rsplit("/", 1)[-1]
+    if re.search(rf"^From: .*/opt/{re.escape(leaf)}/\.brew/", result.stdout, re.M):
+        return "removed from every tap (only a keg-local formula remains)"
+    return None
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
         "--strict",
         action="store_true",
-        help="also fail when an installed package is neither declared nor ignored",
+        help=(
+            "also fail when an installed package is neither declared nor "
+            "ignored, or when a declared package cannot be provisioned"
+        ),
     )
     parser.add_argument(
         "-v", "--verbose", action="store_true", help="list declared and ignored packages"
@@ -134,6 +163,35 @@ def main(argv: list[str] | None = None) -> int:
     for name in undeclared:
         print(f"   warn: {name} (add an install-script or list it in brew-ignore)")
 
+    sources: dict[Path, str] = {}
+    allowed: list[str] = []
+    unprovisionable: dict[str, str] = {}
+    checked = 0
+    for name, source in wanted.items():
+        if name in missing:
+            continue
+        if source not in sources:
+            sources[source] = source.read_text(encoding="utf-8", errors="replace")
+        if AVAILABILITY_MARKER in sources[source]:
+            allowed.append(name)
+            continue
+        checked += 1
+        reason = unavailable(name)
+        if reason is not None:
+            unprovisionable[name] = reason
+
+    status3 = "WARN" if unprovisionable else "PASS"
+    print(
+        f"== brew/available == {status3} "
+        f"({checked} checked, {len(allowed)} allowed, "
+        f"{len(unprovisionable)} unavailable)"
+    )
+    for name in sorted(unprovisionable):
+        print(
+            f"   warn: {name}: {unprovisionable[name]}  "
+            f"({wanted[name].relative_to(ROOT)})"
+        )
+
     if args.verbose:
         print("== brew/declared-list ==")
         for name in sorted(wanted):
@@ -141,7 +199,7 @@ def main(argv: list[str] | None = None) -> int:
 
     if missing:
         return 1
-    if args.strict and undeclared:
+    if args.strict and (undeclared or unprovisionable):
         return 1
     return 0
 
