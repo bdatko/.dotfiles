@@ -1,7 +1,21 @@
 #!/usr/bin/env bash
 
+set -euo pipefail
+
 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
-(echo; echo 'eval "$(/opt/homebrew/bin/brew shellenv)"') >> ~/.zprofile
+
+# Keep machine-specific shell setup out of the tracked ~/.zprofile.
+profile_local="$HOME/.zprofile.local"
+shellenv='eval "$(/opt/homebrew/bin/brew shellenv)"'
+
+touch "$profile_local"
+if ! grep -qxF "$shellenv" "$profile_local"; then
+	{
+		echo
+		echo "$shellenv"
+	} >>"$profile_local"
+fi
+
 eval "$(/opt/homebrew/bin/brew shellenv)"
 brew update
 brew install stow

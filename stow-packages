@@ -1,0 +1,17 @@
+# Packages stowed by ./stow-all.py (one per line; comments allowed).
+#
+# GNU Stow calls these "packages" (the pre-2.0 name was "modules").
+# The stow directory is this repo; the target directory is $HOME.
+
+alacritty
+git
+gitconfig
+install-scripts
+scripts
+tmux
+zsh
+
+# Intentionally not listed:
+#   nvim    stowing it conflicts with a real ~/.config/nvim clone (see README)
+#   tests   test harness, not a stow package
+#   jupyter valid package, currently not stowed

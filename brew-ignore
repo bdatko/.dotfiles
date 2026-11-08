@@ -1,0 +1,59 @@
+# Installed on this machine but intentionally NOT provisioned by
+# install-scripts/. One package per line; # starts a comment.
+# fnmatch globs are supported (e.g. icu4c@*).
+
+# Tooling for the OpenCode workflow.
+anomalyco/tap/opencode-v2
+dmno-dev/tap/varlock
+
+# Media stack (ffmpeg and its codecs).
+ffmpeg
+aribb24
+frei0r
+libass
+libbluray
+libnghttp3
+libngtcp2
+librist
+libsoxr
+libvidstab
+opencore-amr
+rav1e
+rubberband
+snappy
+speex
+srt
+theora
+xvid
+zimg
+
+# Python / work tooling.
+ansible
+pipx
+pyenv
+python-packaging
+python@3.12
+python@3.13
+rlwrap
+ruby
+
+# ICU versions retained for compatibility.
+icu4c@75
+icu4c@76
+icu4c@77
+icu4c@78
+
+# Other personal tools.
+docker-completion
+groff
+just
+mbedtls
+miller
+pandoc
+unbound
+vimtutor-sequel
+yt-dlp
+zeromq
+
+# Casks.
+sioyek

@@ -1,6 +1,21 @@
+; Machine-wide defaults. Machine-specific identity lives in
+; ~/.gitconfig.local, which is NOT tracked by this repo.
+
+[user]
+    useConfigOnly = true
+
+[include]
+    path = ~/.gitconfig.local
+
 [includeIf "gitdir:~/personal/"]
     path = ~/.gitconfig-personal
 [includeIf "gitdir:~/work/"]
     path = ~/.gitconfig-work
 [includeIf "gitdir:~/.dotfiles/"]
     path = ~/.gitconfig-personal
+
+; The oauth helper must be configured last so it acts as a credential
+; generator after any storage helper (e.g. osxkeychain) has had a chance.
+; https://git-scm.com/docs/gitcredentials#_oauth
+[credential]
+    helper = oauth
